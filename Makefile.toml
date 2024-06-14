@@ -1,0 +1,92 @@
+env_files = ["scripts/ignore.env", "scripts/const.env"]
+
+[config]
+default_to_workspace = false
+
+[tasks.uap]
+script = "git submodule update --init"
+
+[tasks.rm_sqlite]
+script = "rm ${RUSTGYM_SQLITE}"
+
+[tasks.print-schema]
+script = "diesel print-schema run --database-url ${RUSTGYM_SQLITE} > schema/src/schema.rs"
+
+[tasks.migration]
+script = "diesel migration run --database-url ${RUSTGYM_SQLITE}"
+
+[tasks.readme]
+script = "cargo run --bin rustgym-readme"
+dependencies = ["rm_sqlite", "migration"]
+
+[tasks.openvgdb]
+script = [
+    "curl -LJO ${OPENVGDB_DOWNLOAD_ZIP}",
+    "unzip openvgdb.zip",
+    "mv openvgdb.sqlite ${OPENVGDB_SQLITE}",
+    "rm openvgdb.zip",
+    "cargo run --bin openvgdb"
+]
+
+[tasks.wasm]
+command = "wasm-pack"
+args = ["build", "wasm", "--target", "no-modules", "--out-dir", "../pkg"]
+
+[tasks.release]
+command = "cargo"
+args = ["build", "--release", "--target", "x86_64-unknown-linux-musl"]
+
+[tasks.watch-wasm]
+run_task = { name = ["wasm-pack"] }
+watch = { postpone = true, watch = ["./wasm", "./msg", "./consts", "./nes"] }
+
+[tasks.watch-server]
+script = "cargo watch -w server -w msg -w consts -x 'run --bin rustgym-server'"
+dependencies = ["wasm"]
+
+[tasks.sonic]
+script = "sonic -c config/sonic.cfg"
+
+[tasks.dev]
+run_task = { name = ["sonic", "watch-server", "watch-wasm"], parallel = true }
+
+[tasks.wasm-test]
+command = "wasm-pack"
+args = ["test", "--chrome", "--headless", "wasm"]
+
+[tasks.create-instance]
+command = "gcloud"
+args = [
+    "compute",
+    "instances",
+    "create",
+    "${VM_NAME}",
+    "--machine-type",
+    "${MACHINE_TYPE}",
+    "--zone",
+    "${ZONE}",
+    "--tags",
+    "http-server,https-server,stun-server"
+]
+
+[tasks.ssh]
+command = "ssh"
+args = ["${VM_NAME}.us-central1-a.${PROJECT}"]
+
+[tasks.bundle]
+command = "tar"
+args = ["-cvvf", "bundle.tar", "-T", "bundle.txt"]
+dependencies = ["release", "wasm"]
+
+[tasks.deploy]
+command = "scp"
+args = ["bundle.tar", "${VM_NAME}.us-central1-a.${PROJECT}:~"]
+dependencies = ["bundle"]
+
+[tasks.copy-scripts]
+command = "scp"
+args = ["-r", "scripts", "${VM_NAME}.us-central1-a.${PROJECT}:~"]
+
+[tasks.copy-config]
+command = "scp"
+args = ["-r", "config", "${VM_NAME}.us-central1-a.${PROJECT}:~"]
