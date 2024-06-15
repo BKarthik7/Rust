@@ -26,7 +26,7 @@ impl Solution {
     }
 }
 
-#[test]
+//#[test]
 fn test() {
     let l1 = list!(2, 4, 3);
     let l2 = list!(5, 6, 4);

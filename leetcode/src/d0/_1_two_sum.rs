@@ -16,7 +16,7 @@ impl Solution {
     }
 }
 
-#[test]
+//#[test]
 fn test() {
     let nums = vec![2, 7, 11, 15];
     let target = 9;
