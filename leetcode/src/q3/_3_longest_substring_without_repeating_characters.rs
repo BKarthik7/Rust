@@ -17,7 +17,7 @@ impl Solution {
     }
 }
 
-//#[test]
+#[test]
 fn test() {
     let s = " ".to_string();
     assert_eq!(Solution::length_of_longest_substring(s), 1);
